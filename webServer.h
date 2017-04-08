@@ -31,4 +31,6 @@
 #define NOT_IMPL	"HTTP/1.1 501 Not Implemented"
 
 int checkOption();
+void insertInQueue(unsigned int acceptConn, char fName[BUF_SIZE], off_t fSize,
+		unsigned int ip, char bufferIn[BUF_SIZE]);
 #endif /* WEBSERVER_H_ */
