@@ -20,6 +20,7 @@ char * file = NULL;
 
 pthread_t t_serve;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t smutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 struct request {
@@ -73,7 +74,6 @@ void insertion(int acceptfd) {
 	if (retcode < 0) {
 		printf("recv error detected ...\n");
 	} else {
-
 		incomingRequest = malloc(sizeof(struct request));
 
 		int c = 0;
@@ -154,8 +154,8 @@ void insertion(int acceptfd) {
 		if (lstat(incomingRequest->fileName, &st) == 0)
 			incomingRequest->fileLength = st.st_size;
 		else {
-			perror("Cannot find file!\n");
-			exit(1);
+			perror("Cannot find file!");
+
 		}
 
 		/* work out the file type and check we support it */
@@ -169,7 +169,7 @@ void insertion(int acceptfd) {
 				break;
 			}
 		}
-
+		incomingRequest->acceptfd = acceptfd;
 		printf("Type: %s\n", incomingRequest->type);
 		printf("File: %s\n", incomingRequest->fileName);
 		printf("Protocol: %s\n", incomingRequest->protocol);
@@ -204,7 +204,7 @@ void *thread_serve() {
 		printf("\n Entered serving thread\n");
 
 		/*me ti seira ta threads using mutex mpenoun sto func*/
-		if ((err = pthread_mutex_lock(&mutex))) {
+		if ((err = pthread_mutex_lock(&smutex))) {
 			printf("pthread_mutex_lock: %s\n", strerror(err));
 			exit(1);
 		}
@@ -213,7 +213,7 @@ void *thread_serve() {
 		//check if queue is empty
 		while (head == NULL)
 			//wait na mpei kati mesa sto queue
-			if ((err = pthread_cond_wait(&cond, &mutex))) {
+			if ((err = pthread_cond_wait(&cond, &smutex))) {
 				printf("phtread_cond_wait: %s\n", strerror(err));
 				exit(1);
 
@@ -226,35 +226,25 @@ void *thread_serve() {
 		if ((file_fd = open(temp->Request.fileName, O_RDONLY)) == -1)
 			printf("file_fd open error");
 		else {
-//			printf("\nKati mpike sto queue\n");
-//			memset(buffer, 0, BUF_SIZE);
-//			strcpy(buffer,temp->Request.protocol);
-//			strcat(buffer," 200 OK\r\nServer: my_server\r\nContent-Length: ");
-//			//strcat(buffer,temp->Request.fileLength);
-//			strcat(buffer,"\r\nConnection: ");
-//			strcat(buffer,temp->Request.connection);
-//			strcat(buffer,"\r\nContent-Type: ");
-//			strcat(buffer,temp->Request.fileType);
-//			strcat(buffer,"\r\n\r\n");
-//			sprintf(buffer,
-//					"%s 200 OK\r\nServer: my_Server\r\nContent-Length: %d\r\nConnection: %s\r\nContent-Type: %s\r\n\r\n",
-//					temp->Request.protocol, temp->Request.fileLength,
-//					temp->Request.connection, temp->Request.fileType);
-			strcpy(buffer,"HTTP/1.1 404 Not Found\nContent-Type:text/html\n\n<html><body><h1>FILE NOT FOUND</h1></body></html>");
-			printf("%s\n", buffer);
+			memset(buffer, 0, BUF_SIZE);
+			sprintf(buffer,
+					"%s 200 OK\r\nServer: my_Server\r\nContent-Length: %d\r\nConnection: %s\r\nContent-Type: %s\r\n\r\n",
+					temp->Request.protocol, temp->Request.fileLength,
+					temp->Request.connection, temp->Request.fileType);
 			write(temp->Request.acceptfd, buffer, strlen(buffer));
-//			memset(buffer, 0, sizeof(buffer));
-//
-//			int ret;
-//			while ((ret = read(file_fd, buffer, BUF_SIZE)) > 0) {
-//				write(temp->Request.acceptfd, buffer, ret);
-//			}
-			sleep(1);
+			memset(buffer, 0, sizeof(buffer));
 
-			if ((err = pthread_mutex_unlock(&mutex))) {
+			int ret;
+			while ((ret = read(file_fd, buffer, BUF_SIZE)) > 0) {
+				write(temp->Request.acceptfd, buffer, ret);
+			}
+			sleep(1);
+			close(temp->Request.acceptfd);
+			if ((err = pthread_mutex_unlock(&smutex))) {
 				printf("pthread_mutex_unlock: %s\n", strerror(err));
 				exit(1);
 			}
+			free(temp);
 			sem_post(&sem);
 		}
 	}
@@ -330,7 +320,6 @@ int main(int argc, char *args[]) {
 		if (acceptfd < 0)
 			perror("error in accepting");
 		else {
-
 			printf("klidonw mutex");
 			pthread_mutex_lock(&mutex);
 			pthread_create(&t_serve[running_threads], NULL, &thread_serve,
@@ -339,14 +328,12 @@ int main(int argc, char *args[]) {
 			/*send signal to condition*/
 			printf("stelnw sima condition");
 			if ((err = pthread_cond_signal(&cond))) {
-
 				printf("pthread_cond_signal: %s\n", strerror(err));
 				exit(1);
 			}
 			printf("kseklidonw mutex\n");
 			pthread_mutex_unlock(&mutex);
 			printf("inserted in queue\n");
-			sleep(1);
 		}
 		/*LISTENER*/
 	}
