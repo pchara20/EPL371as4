@@ -24,6 +24,14 @@ typedef struct {
 	int fileLength;
 	char server[50];
 } request;
+
+struct {
+	char *ext;
+	char *filetype;
+} extensions[] = { { "gif", "image/gif" }, { "jpg", "image/jpg" }, { "jpeg",
+		"image/jpeg" }, { "png", "image/png" }, { "ico", "image/ico" }, { "zip",
+		"image/zip" }, { "gz", "image/gz" }, { "tar", "image/tar" }, { "htm",
+		"text/html" }, { "html", "text/html" }, { 0, 0 } };
 /*****************************************************************************/
 request *incomingRequest = NULL;
 /*****************************************************************************/
@@ -47,7 +55,7 @@ int main(int argc, char *argv[]) {
 	incomingRequest = malloc(sizeof(request));
 
 	char *x =
-			"GET /index.html HTTP/1.1\nHost: 127.0.0.1:30047\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\nAccept-Language: en-US,en;q=0.5\nAccept-Encoding: gzip, deflate\nConnection: keep-alive\nUpgrade-Insecure-Requests: 1";
+			"GET /index.zip HTTP/1.1\nHost: 127.0.0.1:30047\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\nAccept-Language: en-US,en;q=0.5\nAccept-Encoding: gzip, deflate\nConnection: keep-alive\nUpgrade-Insecure-Requests: 1";
 
 	int c = 0;
 	int c1 = 0;
@@ -81,7 +89,12 @@ int main(int argc, char *argv[]) {
 						strcpy(incomingRequest->type, tokens);
 						token++;
 					} else if (token == 1) {
-						strcpy(incomingRequest->fileName, tokens);
+						int k = 1, j = 0;
+						while (k < strlen(tokens)) {
+							incomingRequest->fileName[j] = tokens[k];
+							k++;
+							j++;
+						}
 						token++;
 					}
 				}
@@ -113,9 +126,30 @@ int main(int argc, char *argv[]) {
 		if (done == 1)
 			break;
 	}
+
+	if (strcmp(incomingRequest->fileName, "") == 0){
+		strcpy(incomingRequest->fileName, "index.html");
+	}
+
 	struct stat st;
 	if (lstat(incomingRequest->fileName, &st) == 0)
 		incomingRequest->fileLength = st.st_size;
+	else {
+		perror("Cannot find file!\n");
+		exit(1);
+	}
+
+	/* work out the file type and check we support it */
+	int fileLength = strlen(incomingRequest->fileName);
+	int i;
+	for (i = 0; extensions[i].ext != 0; i++) {
+		int length = strlen(extensions[i].ext);
+		if (!strncmp(&incomingRequest->fileName[fileLength - length],
+				extensions[i].ext, length)) {
+			strcpy(incomingRequest->fileType, extensions[i].filetype);
+			break;
+		}
+	}
 
 	printf("Type: %s\n", incomingRequest->type);
 	printf("File: %s\n", incomingRequest->fileName);
@@ -123,5 +157,6 @@ int main(int argc, char *argv[]) {
 	printf("Connection: %s\n", incomingRequest->connection);
 	printf("Server: %s\n", incomingRequest->server);
 	printf("Content-Length: %d\n", incomingRequest->fileLength);
+	printf("Content-Type: %s\n", incomingRequest->fileType);
 	return 0;
 }
