@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 	incomingRequest = malloc(sizeof(request));
 
 	char *x =
-			"GET /index.zip HTTP/1.1\nHost: 127.0.0.1:30047\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\nAccept-Language: en-US,en;q=0.5\nAccept-Encoding: gzip, deflate\nConnection: keep-alive\nUpgrade-Insecure-Requests: 1";
+			"GET /index.html HTTP/1.1\nHost: 127.0.0.1:30047\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\nAccept-Language: en-US,en;q=0.5\nAccept-Encoding: gzip, deflate\nConnection: keep-alive\nUpgrade-Insecure-Requests: 1";
 
 	int c = 0;
 	int c1 = 0;
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 			break;
 	}
 
-	if (strcmp(incomingRequest->fileName, "") == 0){
+	if (strcmp(incomingRequest->fileName, "") == 0) {
 		strcpy(incomingRequest->fileName, "index.html");
 	}
 
@@ -158,5 +158,25 @@ int main(int argc, char *argv[]) {
 	printf("Server: %s\n", incomingRequest->server);
 	printf("Content-Length: %d\n", incomingRequest->fileLength);
 	printf("Content-Type: %s\n", incomingRequest->fileType);
-	return 0;
+
+	/*****************************************************************************/
+	char buffer[BUF_SIZE];
+	int file_fd;	//DESCRIPTOR TOU FILE POU ENA ANIKSI
+	if ((file_fd = open(incomingRequest->fileName, O_RDONLY)) == -1)
+		printf("file_fd open error");
+	else {
+		printf("\nKati mpike sto queue\n");
+		//stile header
+		memset(buffer, 0, sizeof(buffer));
+		sprintf(buffer,
+				"%s 200 OK\r\nServer: my_Server\r\nContent-Length: %d\r\nConnection: %s\r\nContent-Type: %s\r\n\r\n",
+				incomingRequest->protocol, incomingRequest->fileLength,
+				incomingRequest->connection, incomingRequest->fileType);
+
+		printf("buffer: %s\n", buffer);
+		//write(acceptfd, buffer, strlen(buffer));
+		//printf("tou stelnw to \n%s\n", buffer);
+		//write(acceptfd, buffer, strlen(buffer));
+		return 0;
+	}
 }
