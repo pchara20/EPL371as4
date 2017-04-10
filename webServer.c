@@ -57,16 +57,20 @@ int main(int argc, char *argv[]) {
 	char *x =
 			"GET /index.html HTTP/1.1\nHost: 127.0.0.1:30047\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\nAccept-Language: en-US,en;q=0.5\nAccept-Encoding: gzip, deflate\nConnection: keep-alive\nUpgrade-Insecure-Requests: 1";
 
+	char *y =
+			"GET /index.html HTTP/1.1\nHost: 127.0.0.1:30002\nConnection: keep-alive\nUpgrade-Insecure-Requests: 1\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\nAccept-Encoding: gzip, deflate, sdch, br\nAccept-Language: en-GB,en;q=0.8,en-US;q=0.6,el;q=0.4";
 	int c = 0;
 	int c1 = 0;
 	char tokens[100];
 	int tc = 0;
 	char line[100];
+	char tokenMatched[100];
 	int lineCounter = 0;
 	int token = 0;
 	memset(tokens, 0, sizeof(tokens));
 	memset(line, 0, sizeof(line));
-	int done = 0;
+	memset(tokenMatched, 0, sizeof(tokenMatched));
+
 	while (c < strlen(x)) {
 		while (x[c] != '\n') {
 			line[c1] = x[c];
@@ -83,10 +87,14 @@ int main(int argc, char *argv[]) {
 				tc++;
 				p++;
 			} else {
-				printf("token 0: %s\n", tokens);
+				//printf("token 0: %s\n", tokens);
+				memset(tokenMatched, 0, sizeof(tokenMatched));
+				strcpy(tokenMatched, tokens);
+				//printf("token Matched: %s\n", tokenMatched);
 				if (lineCounter == 0) {
 					if (token == 0) {
 						strcpy(incomingRequest->type, tokens);
+						printf("Type: %s\n", incomingRequest->type);
 						token++;
 					} else if (token == 1) {
 						int k = 1, j = 0;
@@ -96,6 +104,7 @@ int main(int argc, char *argv[]) {
 							j++;
 						}
 						token++;
+						printf("File: %s\n", incomingRequest->fileName);
 					}
 				}
 				memset(tokens, 0, sizeof(tokens));
@@ -103,18 +112,24 @@ int main(int argc, char *argv[]) {
 				p++;
 			}
 		}
-		printf("token 1: %s\n", tokens);
+		//printf("token Matched: %s\n", tokenMatched);
+
 		if (lineCounter == 0) {
 			if (token == 2) {
 				strcpy(incomingRequest->protocol, tokens);
+				printf("Protocol: %s\n", incomingRequest->protocol);
 				token++;
 			}
-		} else if (lineCounter == 1) {
-			strcpy(incomingRequest->server, tokens);
-		} else if (lineCounter == 6) {
-			strcpy(incomingRequest->connection, tokens);
-			done = 1;
 		}
+
+		if (strcmp(tokenMatched, "Connection:") == 0) {
+			strcpy(incomingRequest->connection, tokens);
+			printf("Connection: %s\n", incomingRequest->connection);
+		} else if (strcmp(tokenMatched, "Host:") == 0) {
+			strcpy(incomingRequest->server, tokens);
+			printf("Server: %s\n", incomingRequest->server);
+		}
+
 		memset(tokens, 0, sizeof(tokens));
 		tc = 0;
 
@@ -123,8 +138,12 @@ int main(int argc, char *argv[]) {
 		printf("\n");
 		memset(line, 0, sizeof(line));
 		c++;
-		if (done == 1)
+		if (strcmp(incomingRequest->type, "") != 0
+				&& strcmp(incomingRequest->protocol, "") != 0
+				&& strcmp(incomingRequest->connection, "") != 0
+				&& strcmp(incomingRequest->server, "") != 0)
 			break;
+
 	}
 
 	if (strcmp(incomingRequest->fileName, "") == 0) {
