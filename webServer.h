@@ -1,10 +1,3 @@
-/*
- * webServer.h
- *
- *  Created on: 7 Apr 2017
- *      Author: acosti
- */
-
 #ifndef WEBSERVER_H_
 #define WEBSERVER_H_
 
@@ -17,20 +10,65 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include <fcntl.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <semaphore.h>
-
 #define BUF_SIZE 1024
-#define MAX_THREADS 40
 
-#define IMAGE_OK    "HTTP/1.1 200 OK\nContent-Type:image/gif\n\n"
-#define HTML_OK     "HTTP/1.1 200 OK\nContent-Type:text/html\n\n"
-#define NOT_FOUND   "HTTP/1.1 404 Not Found\nContent-Type:text/html\n\n"
-#define NOT_IMPL	"HTTP/1.1 501 Not Implemented"
+sem_t sem; // semaphore
+char *file = NULL; // file to check
 
-int checkOption();
-void insertInQueue(unsigned int acceptConn, char fName[BUF_SIZE], off_t fSize,
-		unsigned int ip, char bufferIn[BUF_SIZE]);
+int debug_flag = 0; // debug flag
+int threadnum = 40; // thread number
+int portnum = 30000; // set port number
+static pthread_mutex_t mutex; // queue mutex
+static pthread_mutex_t smutex; // thread mutex
+static pthread_cond_t cond; // condition variable if queue is empty
+
+/*****************************************************************************/
+// struct containing the fields of a message
+struct request {
+	char type[500];
+	char fileName[500];
+	char protocol[500];
+	char connection[500];
+	char fileType[500];
+	int fileLength;
+	char server[500];
+	int acceptfd;
+};
+
+/*****************************************************************************/
+// struct containing the extensions supported
+struct {
+	char *ext;
+	char *filetype;
+} extensions[] = { 
+	{ "gif", "image/gif" }, 
+	{ "jpg", "image/jpg" }, 
+	{ "jpeg", "image/jpeg" }, 
+	{ "pdf", "application/pdf" }, 
+	{ "txt", "text/plain" }, 
+	{ "sed", "text/plain" }, 
+	{ "awk", "text/plain" }, 
+	{ "c", "text/plain" },
+	{ "h", "text/plain" }, 
+	{"htm","text/html" }, 
+	{ "html", "text/html" }, 
+	{ 0, "application/octet-stream" } 
+};
+
+/*****************************************************************************/
+// the node to be inserted in queue
+struct node {
+	struct request Request;
+	struct node *n_next;
+}*head = NULL; // initialize head as NULL
+
+/*****************************************************************************/
+void insertion(int acceptfd);
+void *thread_serve();
+void print_help_options();
+int checkOption(struct request *incoming);
+/*****************************************************************************/
+
 #endif /* WEBSERVER_H_ */
